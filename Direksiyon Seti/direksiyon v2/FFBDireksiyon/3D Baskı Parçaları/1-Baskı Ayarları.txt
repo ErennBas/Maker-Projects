@@ -1,0 +1,16 @@
+-Rulman Tutucu,
+-EncoderTutucu,
+-Arduino,
+-Encoder ve Motor Sürücü parçalarını 0.25 katman yüksekliği ve yüzde20 dolulukta bastım.
+
+Shaft parçasını 0.2 katman yüksekliği ve yüzde 100 dolulukta bastım.
+
+HTD3M 20(Motor Kasnak) parçasını 0.2 katman yüksekliği ve yüzde 100 dolulukta bastım.
+
+HTD3M 72-15 Kasnak parçasını 0.2 katman yüksekliği ve yüzde 50 dolulukta bastım.
+
+-Encoder Arayalıcı
+-Orta-Arka Panel Aralayıcı
+-Ön-Orta Panel Aralayıcı
+-FanYanParcalar 
+-Encoder Shaft Kaplin parçalarını 0.2 katman yüksekliği ve yüzde 20 dolulukta bastım.

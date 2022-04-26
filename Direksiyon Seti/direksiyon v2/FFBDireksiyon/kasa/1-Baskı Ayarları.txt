@@ -1,0 +1,19 @@
+-Alt Taban,
+-Arka Panel,
+-Orta Panel,
+-Ön Panel,
+Rulman Tutucu,
+Arduino, parçalarını 0.25 katman yüksekliği ve yüzde20 dolulukta bastım.
+
+
+Pot Shaft 0.2 katman yüksekliği ve yüzde yüz(full) dolulukta bastım.
+
+
+HTD3M 23(Pot Kasnak),
+HTD3M 76-15 Kasnak
+Pot Kasnak Destek parçalarını 0.2 katman yüksekliği ve yüzde 50 dolulukta bastım.
+
+
+-Orta-Arka Panel Aralayıcı
+-Ön-Orta Panel Aralayıcı 
+Pot Dişli Durdurucu parçalarını 0.2 katman yüksekliği ve yüzde 20 dolulukta bastım.
