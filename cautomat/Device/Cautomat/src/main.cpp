@@ -33,9 +33,6 @@ struct Event
   bool status;
 };
 
-#define FDSFFDSA "[{id: 0,portion: 3,hour: 10,minute: 1,weekDay: [1,1,1,1,1,1,1],retry: true,status: true},{id: 1,portion: 4,hour: 11,minute: 1,weekDay: [0,1,0,1,0,1,0],retry: true,status: true},{id: 2,portion: 4,hour: 13,minute: 1,weekDay: [1,1,1,1,1,1,1],retry: true,status: true},{id: 3,portion: 4,hour: 14,minute: 1,weekDay: [0,1,0,1,0,1,0],retry: true,status: true},{id: 4,portion: 4,hour: 16,minute: 1,weekDay: [1,1,1,1,1,1,1],retry: true,status: true}]";
-
-const char *testString = FDSFFDSA;
 const char *ssid = STASSID;
 const char *password = STAPSK;
 
@@ -85,56 +82,85 @@ void print2digits(int number)
 {
   if (number >= 0 && number < 10)
   {
-    Serial.write('0');
+    Serial.write("0");
   }
   Serial.print(number);
 }
 
-void handleSettingsUpdate()
+int myWeekday()
 {
-  String data = server.arg("plain");
-  setFileData("config.json", data);
-  Serial.println("-----data => " + data);
-  server.send(200, "application/json", "{\"status\" : \"ok\"}");
-  int i = 3;
-  while (i > 0)
-  {
-    digitalWrite(powerLed, !digitalRead(powerLed));
-    Serial.println("ESP Yeniden Başlatılıyor... " + i);
-    i--;
-    delay(500);
-    digitalWrite(powerLed, !digitalRead(powerLed));
-  }
-  ESP.restart();
+  int weekdays[] = {0, 6, 0, 1, 2, 3, 4, 5};
+  int convertedWeekday = weekdays[weekday()];
+  return convertedWeekday;
 }
 
-void blink(int loop){
+void blink(int loop)
+{
   for (int i = 0; i < loop; i++)
   {
-    digitalWrite(powerLed, HIGH);
-    delay(500);
     digitalWrite(powerLed, LOW);
-  }  
+    delay(250);
+    digitalWrite(powerLed, HIGH);
+    delay(250);
+  }
 }
+
+void setCrossOrigin()
+{
+  server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+  server.sendHeader(F("Access-Control-Max-Age"), F("600"));
+  server.sendHeader(F("Access-Control-Allow-Methods"), F("PUT,POST,GET,OPTIONS"));
+  server.sendHeader(F("Access-Control-Allow-Headers"), F("*"));
+};
+
+void handleSettingsUpdate()
+{
+  setCrossOrigin();
+  String data = server.arg("plain");
+  setFileData("events.json", data);
+  Serial.println("-----data => " + data);
+  server.send(200, "application/json", getFileData("events.json"));
+  deserializeJson(events, data);
+  blink(3);
+}
+
 
 void giveFoood(int portion)
 {
   blink(3);
+  servo_engine.attach(engine);
   servo_engine.write(180);
   delay(portion * 1000);
-  servo_engine.write(92);
+  servo_engine.detach();
+}
+
+void handleGiveFood()
+{
+  setCrossOrigin();
+  String portion = server.arg("portion");
+  Serial.println("-----PORTİON => " + portion);
+  giveFoood(portion.toInt());
+  server.send(200, "application/json", "{\"status\" : \"ok\"}");
 }
 
 void toggleLED()
 {
+  setCrossOrigin();
   Serial.println("toggleed Tetiklendi");
   digitalWrite(powerLed, !digitalRead(powerLed));
   server.send(200, "text / plain", "");
 }
 
+void getSettings()
+{
+  setCrossOrigin();
+  server.send(200, "application/json", getFileData("events.json"));
+}
+
 void handleRoot()
 {
-  server.send(200, "text / plain", "Hello resolved by mDNS !");
+  setCrossOrigin();
+  server.send(200, "application/json", "{\"status\" : \"ok\"}");
 }
 
 void setup()
@@ -142,20 +168,17 @@ void setup()
   Serial.begin(115200);
   LittleFS.begin();
   pinMode(powerLed, OUTPUT);
-  pinMode(engine, INPUT);
-  Serial.println("----------------------------------------------------");
-  Serial.println(digitalRead(engine));
-  Serial.println("----------------------------------------------------");
-  delay(100000);
-  servo_engine.attach(engine);
+
   while (!Serial)
     ; // wait for serial
   delay(200);
+
   Serial.println("DS1307RTC Read Test");
   Serial.println("-------------------");
 
-  deserializeJson(events, testString);
+  deserializeJson(events, getFileData("events.json"));
   serializeJsonPretty(events, Serial);
+
 
   WiFi.begin(STASSID, STAPSK);
   while (WiFi.status() != WL_CONNECTED)
@@ -176,15 +199,19 @@ void setup()
       delay(1000);
     }
   }
+
   Serial.println("mDNS responder started");
 
   server.on("/settings", HTTP_POST, handleSettingsUpdate);
+  server.on("/settings", getSettings);
+  server.on("/food", handleGiveFood);
   server.on("/", handleRoot);
   server.on("/toggle", HTTP_POST, toggleLED);
   server.begin();
 
   MDNS.addService("http", "tcp", 80);
   delay(3000);
+  digitalWrite(powerLed, HIGH);
 }
 
 void loop()
@@ -195,22 +222,92 @@ void loop()
 
   if (RTC.read(tm))
   {
+    for (unsigned int i = 0; i < events.size(); i++)
+    {
+      Serial.println("ilk if");
+      // Bu kontrole retry false ise statuse bakacak.
+      if(events[i]["status"].as<String>() == "true")
+      {
+        Serial.println("2 if");
+        if (events[i]["retry"].as<String>() == "true")
+        {
+          Serial.println("3 if");
+          if (events[i]["hour"].as<String>() == String(tm.Hour) && events[i]["minute"].as<String>() == String(tm.Minute) && events[i]["status"].as<String>() == "true" && String(tm.Second) == "0" && events[i]["weekDay"][myWeekday()].as<String>() == "1")
+          {
+            Serial.println("4 if");
+            giveFoood(events[i]["portion"].as<int>());
+          }
+        }
+        else
+        {
+          Serial.println("1 else");
+          if (events[i]["status"].as<String>() == "true" && events[i]["hour"].as<String>() == String(tm.Hour) && events[i]["minute"].as<String>() == String(tm.Minute) && String(tm.Second) == "0")
+          {
+            Serial.println("5 if");
+            events[i]["status"] = "false";
+            giveFoood(events[i]["portion"].as<int>());
+          }
+        }
+      }
+      else
+      {
+        Serial.println(events[i]["status"].as<String>());
+        Serial.println("---------------");
+      }
+    }
 
-    Serial.println("-----------");
-    Serial.println(weekday());
+    Serial.println(myWeekday());
     Serial.println("-----------");
     print2digits(tm.Hour);
-    Serial.write(':');
+    Serial.write(":");
     print2digits(tm.Minute);
-    Serial.write(':');
+    Serial.write(":");
     print2digits(tm.Second);
     Serial.print(", Date (D/M/Y) = ");
     Serial.print(tm.Day);
-    Serial.write('/');
+    Serial.write("/");
     Serial.print(tm.Month);
-    Serial.write('/');
+    Serial.write("/");
     Serial.print(tmYearToCalendar(tm.Year));
     Serial.println();
+
+    // if (tm.Hour == 21 && tm.Minute == 31 && tm.Second == 10)
+    // {
+    //   Serial.println("---------ESKİ---------");
+    //   print2digits(tm.Hour);
+    //   Serial.write(":");
+    //   print2digits(tm.Minute);
+    //   Serial.write(":");
+    //   print2digits(tm.Second);
+    //   Serial.print(", Date (D/M/Y) = ");
+    //   Serial.print(tm.Day);
+    //   Serial.write("/");
+    //   Serial.print(tm.Month);
+    //   Serial.write("/");
+    //   Serial.print(tmYearToCalendar(tm.Year));
+    //   Serial.println();
+    //   Serial.println("---------ESKİ---------");
+    //   Serial.println();
+    //   setTime(21, 31, 11, 29, 5, 2022);
+    //   delay(2000);
+    //   Serial.println("---------YENİ---------");
+    //   print2digits(tm.Hour);
+    //   Serial.write(":");
+    //   print2digits(tm.Minute);
+    //   Serial.write(":");
+    //   print2digits(tm.Second);
+    //   Serial.print(", Date (D/M/Y) = ");
+    //   Serial.print(tm.Day);
+    //   Serial.write("/");
+    //   Serial.print(tm.Month);
+    //   Serial.write("/");
+    //   Serial.print(tmYearToCalendar(tm.Year));
+    //   Serial.println();
+    //   Serial.println("---------YENİ---------");
+    //   delay(1000000);
+    // }
+    
+
   }
   else
   {
@@ -227,5 +324,5 @@ void loop()
     }
     delay(9000);
   }
-  delay(1000);
+  delay(950);
 }
