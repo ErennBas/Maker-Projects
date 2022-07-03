@@ -16,8 +16,8 @@
 #define engine 12
 
 #ifndef STASSID
-#define STASSID "Dokuzbit"
-#define STAPSK "9bit4444"
+#define STASSID "PANDA"
+#define STAPSK "Melishasan1903"
 #endif
 
 tmElements_t tm;
@@ -179,13 +179,11 @@ void setup()
   deserializeJson(events, getFileData("events.json"));
   serializeJsonPretty(events, Serial);
 
-
+Serial.println(STASSID);
+Serial.println(STAPSK);
   WiFi.begin(STASSID, STAPSK);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
+  delay(3000);
+  blink(10);
   
   Serial.println("");
   Serial.print("Connected! IP address: ");
@@ -255,7 +253,9 @@ void loop()
         Serial.println("---------------");
       }
     }
-
+    Serial.println("-----------");
+    Serial.println(weekday());
+    Serial.println("-----------");
     Serial.println(myWeekday());
     Serial.println("-----------");
     print2digits(tm.Hour);
